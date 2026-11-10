@@ -6,6 +6,6 @@ namespace Backend
 {
     public interface IWordSearchService
     {
-        WordSearchDTO Search(string text, string searchWord);
+        WordSearchDTO Search(string text, string searchWord, SearchOptions options);
     }
 }
