@@ -1,17 +1,16 @@
-﻿using Microsoft.Extensions.DependencyInjection; // ServiceCollection
-using Backend; // IWordSearchService ve WordSearchService 
-using OOP1;//UserMenu
+﻿using Microsoft.Extensions.DependencyInjection; // ServiceCollection için
+using Backend;                                  // SearchHistory için
+using OOP1;                                     // UserMenu için
 
-// 1. Opsætning af Dependency Injection (DI)-containeren
-var services = new ServiceCollection(); // DI konteyneri
-services.AddSingleton<IWordSearchService, WordSearchService>(); // Giv WordSearchService til enhver, der anmoder om IWordSearchService
-services.AddSingleton<SearchHistory>(); // Singleton: program boyunca TEK bir geçmiş nesnesi olsun
-services.AddSingleton<UserMenu>(); // Lad også ConsoleUI blive oprettet af containeren
+var services = new ServiceCollection();         // DI konteyneri
 
-var provider = services.BuildServiceProvider(); // DI konteyneri oluşturuldu // Opret serviceprovideren, som kan oprette objekter baseret på registreringerne
+// IWordSearchService kaydı SİLİNDİ, çünkü arama artık WordSearcher sınıflarında
+services.AddSingleton<SearchHistory>();         // program boyunca tek bir geçmiş nesnesi
+services.AddSingleton<UserMenu>();              // UserMenu, constructor'ında SearchHistory ister, DI verir
 
-var userMenu = provider.GetRequiredService<UserMenu>(); // DI konteynerinden UserMenu örneğini alıyoruz // Vi henter en instans af UserMenu fra DI-containeren
+var provider = services.BuildServiceProvider(); // konteyneri kur (kayıtlar bundan ÖNCE olmalı)
 
-userMenu.Run();// programın akışı artık usermenu 'de
+var userMenu = provider.GetRequiredService<UserMenu>(); // UserMenu'yu iste
+userMenu.Run();                                         // programı başlat
 
 

@@ -9,7 +9,7 @@ namespace Backend
     (
         bool CaseSensitive, // true: "Type" og "type" betragtes som forskellige
         bool WholeWord , // true: kun hele ord tælles ("type" i "types" tælles ikke)
-        bool showElapsedTime // true: varigheden vises på skærmen
+        bool ShowElapsedTime // true: varigheden vises på skærmen
     );
     
     

@@ -8,44 +8,61 @@ namespace OOP1
 {
     public class UserMenu
     {
-        private readonly IWordSearchService _searchService; // Feltet til at gemme backend-servicen
         private readonly SearchHistory _searchHistory; // Feltet til at gemme søgehistorikken
 
-        public UserMenu(IWordSearchService searchService, SearchHistory searchHistory) // Constructor: DI injicerer automatisk IWordSearchService her
+        public UserMenu(SearchHistory searchHistory) // Constructor: DI injicerer automatisk IWordSearchService her
         {
-            _searchService = searchService; // Gem den modtagne service i feltet
             _searchHistory = searchHistory; // Gem den modtagne søgehistorik i feltet
         }
 
         public void Run()
         {
-            string text = ReadText();                            // metni al
-            string word = ReadWord();                            // kelimeyi al
-            SearchOptions options = ReadSearchOptions();         // arama seçeneklerini al
-            bool running = true;                                   // program çalışıyor mu?
-            bool needSearch = true;                                    // arama yapılması gerekiyor mu?
+
+            bool advanced = ReadSearchMode(); // 1) ÖNCE arama tipi (ödevin istediği sıra)
+            string text = ReadText(); // 2) Metin girilir
+            string word = ReadWord(); // 3) Aranacak kelime girilir
+
+            // Basic için sabit varsayılan ayarlar, Advance seçilirse kullanıcıya sorulur
+            SearchOptions options = new SearchOptions(false, false, true);
+            
+                if (advanced)
+                {
+                    options = ReadSearchOptions(); // 4) Arama seçenekleri girilir
+                }
+            
+
+            bool running = true;
+            bool needSearch = true; // Arama yapılması gerekip gerekmediğini kontrol etmek için
 
             while (running)
             {
-                if(needSearch)
+                if (needSearch)
                 {
-                    Console.Clear();
-                    WordSearchDTO resultt = _searchService.Search(text, word, options); // backend servisini kullanarak arama yap
-                    _searchHistory.AddResult(resultt); // Arama sonucunu geçmişe ekle
+                  Console.Clear();
 
-                    Console.WriteLine("Søgeord: " + resultt.SearchWord);
-                    Console.WriteLine("Antal forekomster: " + resultt.MatchCount);
-                    if (options.showElapsedTime)
+                    // Base tipte değişken: içinde Basic de olabilir Advanced de
+                    WordSearcher searcher = CreateSearcher(advanced, text, word, options); // Factory method: hangi tipte arama yapılacağını belirler
+                    WordSearchDTO result = searcher.Search(); // hangisi olduğuna göre doğru Search() çalışır
+                    _searchHistory.AddResult(result); // Sonuçlar kaydedilir
+
+                    Console.WriteLine("Søgeord: " + result.SearchWord);
+                    Console.WriteLine("Antal forekomster: " + result.MatchCount);
+
+                    // Basic'te süre her zaman gösterilir, Advance'te kullanıcının seçimine bağlı
+                    if(!advanced || options.ShowElapsedTime)
                     {
-                        Console.WriteLine("Tid: " + resultt.ElapsedMilliseconds + " ms");
+                        Console.WriteLine("Varighed: " + result.ElapsedMilliseconds + " ms");
                     }
+
                 }
-                needSearch = true; // Varsayılan olarak bir sonraki döngüde arama yapılması gerekiyor
-                Console.WriteLine("1: Søg efter nyt ord i samme tekst");            // menü Option
+                needSearch = true; // Sonraki döngüde arama yapılması gerektiğini varsayalım
+
+                Console.WriteLine("1: Søg efter nyt ord i samme tekst");
                 Console.WriteLine("2: Søg samme ord i ny tekst");
-                Console.WriteLine("4: Skift indstillinger");
-                Console.WriteLine("5: Vis alle søgninger");  // yeni menü satırı
                 Console.WriteLine("3: Afslut");
+                Console.WriteLine("4: Skift indstillinger (kun Advance)");
+                Console.WriteLine("5: Vis alle søgninger");
+                Console.WriteLine("6: Skift søgetype");
                 Console.Write("Vælg: ");
 
                 string choice = Console.ReadLine();
@@ -53,24 +70,39 @@ namespace OOP1
                 switch (choice)
                 {
                     case "1":
-                        word = ReadWord(); // Samme tekst, nyt ord
+                        word = ReadWord();                             // yeni kelime, aynı metin
                         break;
                     case "2":
-                        text = ReadText(); // Ny tekst, samme ord
+                        text = ReadText();                             // yeni metin, aynı kelime
                         break;
                     case "3":
-                        running = false; // Afslut programmet
+                        running = false;
                         break;
                     case "4":
-                        options = ReadSearchOptions(); // Skift indstillinger
+                        if (advanced)
+                        {
+                            options = ReadSearchOptions();             // sadece Advance'te ayar değişir
+                        }
+                        else
+                        {
+                            Console.WriteLine("Indstillinger findes kun i Advance søgning.");
+                            needSearch = false;                        // arama yapma, mesaj ekranda kalsın
+                        }
                         break;
                     case "5":
-                        DisplaySearchHistory(); // Vis alle søgninger
-                        needSearch = false; // Ingen ny søgning, bare vis historikken
+                        DisplaySearchHistory();
+                        needSearch = false;
+                        break;
+                    case "6":
+                        advanced = ReadSearchMode();                   // tipi değiştir
+                        if (advanced)
+                        {
+                            options = ReadSearchOptions();             // Advance'e geçildiyse ayarları sor
+                        }
                         break;
                     default:
-                        Console.WriteLine("Ugyldigt valg. Afslutter...");
-                        needSearch = false; // Ingen ny søgning, bare vis historikken
+                        Console.WriteLine("Ugyldigt valg.");
+                        needSearch = false;
                         break;
                 }
             }
@@ -156,6 +188,30 @@ namespace OOP1
                 Console.WriteLine(r.SearchWord.PadRight(20) + r.MatchCount.ToString().PadRight(10) + r.ElapsedMilliseconds);
             }
 
+        }
+
+        private bool ReadSearchMode()
+        {
+            while (true)
+            {
+                Console.WriteLine("Vælg søgemetode: 1) Basic, 2) Advanced");
+                string input = Console.ReadLine();
+                if (input == "1") return false; // Basic
+                else if (input == "2") return true; // Advanced
+                else Console.WriteLine("Ugyldigt valg. Indtast venligst '1' eller '2'.");
+            }
+        }
+
+        private WordSearcher CreateSearcher(bool advanced, string text, string word, SearchOptions options)
+        {
+
+            if (advanced)
+            {
+                return new AdvancedWordSearcher(text, word, options); // 3 parametreli constructor
+            }
+
+                return new BasicWordSeacher(text, word); // 2 parametreli constructor
+            
         }
     }
 }
